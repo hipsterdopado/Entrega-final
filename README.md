@@ -23,7 +23,3 @@ Esta aplicación permite gestionar clases deportivas desde una plataforma web. L
 4. Lanza el servidor (`node server.js`)
 5. Abre `index.html` en navegador
 
-# Proyecto-final
-# Proyecto-final
-# proyecto-centro-deportivo
-# Proyecto-final
