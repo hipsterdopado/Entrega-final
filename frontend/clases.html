@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Clases - Centro Deportivo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-izq">
+      👋 Bienvenid@!!  <strong id="nombreUsuario">Usuario</strong>
+    </div>
+    <div class="navbar-centro">
+      <span id="reloj"></span>
+    </div>
+    <div class="navbar-der">
+      <div class="navbar-links"></div>
+      <button class="btn-cerrar" onclick="cerrarSesion()">⏻</button>
+    </div>
+  </nav>
+
+  <h1>Clases Disponibles</h1>
+
+  <section class="semana-control" style="text-align:center; margin-bottom: 20px;">
+    <button onclick="cambiarSemana(-1)">← Semana anterior</button>
+    <strong id="rangoSemana">Rango</strong>
+    <button onclick="cambiarSemana(1)">Semana siguiente →</button>
+  </section>
+  <section id="listaClases"></section>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const rol = localStorage.getItem('rol');
+    const nombre = localStorage.getItem('nombre');
+    const nombreUsuario = document.getElementById('nombreUsuario');
+    const navbarLinks = document.querySelector('.navbar-links');
+
+    if (!token) window.location.href = 'login.html';
+
+    if (nombre && nombreUsuario) nombreUsuario.innerText = nombre;
+
+    if (navbarLinks) {
+      if (rol === 'gerente') {
+        navbarLinks.innerHTML = `
+          <a href="admin.html">Panel Admin</a>
+          <a href="index.html">Inicio</a>
+          <a href="clases.html">Clases</a>
+        `;
+      } else {
+        navbarLinks.innerHTML = `
+          <a href="index.html">Inicio</a>
+          <a href="clases.html">Clases</a>
+        `;
+      }
+    }
+
+    let fechaBase = new Date();
+
+    function cambiarSemana(dir) {
+      fechaBase.setDate(fechaBase.getDate() + dir * 7);
+      cargarClases();
+    }
+
+    function getRangoSemana(fecha) {
+      const inicio = new Date(fecha);
+      const dia = inicio.getDay();
+      const dif = inicio.getDate() - dia + (dia === 0 ? -6 : 1);
+      const lunes = new Date(inicio.setDate(dif));
+      const domingo = new Date(lunes);
+      domingo.setDate(lunes.getDate() + 6);
+      return { inicio: lunes, fin: domingo };
+    }
+
+    function getNombreDia(fecha) {
+      return fecha.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: '2-digit' });
+    }
+
+    async function cargarClases() {
+      const { inicio, fin } = getRangoSemana(fechaBase);
+      document.getElementById('rangoSemana').innerText =
+        inicio.toLocaleDateString() + ' - ' + fin.toLocaleDateString();
+
+      try {
+        const res = await fetch('http://localhost:3000/api/clases', {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await res.json();
+        console.log("Clases recibidas:", data);
+
+        const contenedor = document.getElementById('listaClases');
+        contenedor.innerHTML = '';
+
+        const clasesFiltradas = data.filter(clase => {
+          const fecha = new Date(clase.fecha);
+          return fecha >= inicio && fecha <= fin;
+        });
+
+        console.log("Clases de esta semana:", clasesFiltradas);
+
+        const dias = {};
+        for (let i = 0; i < 7; i++) {
+          const fechaDia = new Date(inicio);
+          fechaDia.setDate(inicio.getDate() + i);
+          const clave = fechaDia.toISOString().slice(0, 10);
+          dias[clave] = { fecha: new Date(fechaDia), clases: [] };
+        }
+
+        clasesFiltradas.forEach(clase => {
+        const fechaClase = new Date(clase.fecha);
+        // Crear clave local sin convertir a UTC
+        const anio = fechaClase.getFullYear();
+        const mes = String(fechaClase.getMonth() + 1).padStart(2, '0');
+        const dia = String(fechaClase.getDate()).padStart(2, '0');
+        const clave = `${anio}-${mes}-${dia}`;
+
+        if (dias[clave]) {
+        dias[clave].clases.push(clase);
+         }
+        });
+
+
+        Object.values(dias).forEach(({ fecha, clases }) => {
+          const divDia = document.createElement('div');
+          divDia.className = 'dia';
+          divDia.innerHTML = `<h2>🗓️ ${getNombreDia(fecha)}</h2>`;
+
+          if (clases.length === 0) {
+            divDia.innerHTML += `<p style="color:gray;">Sin clases programadas</p>`;
+          } else {
+            clases.forEach(clase => {
+              const tarjeta = document.createElement('div');
+              tarjeta.className = 'tarjeta';
+              tarjeta.innerHTML = `
+                <h3>${clase.nombre}</h3>
+                <p><strong>Hora:</strong> ${clase.hora}</p>
+                <p><strong>Plazas:</strong> ${clase.plazas_ocupadas}/${clase.plazas_totales}</p>
+                 ${rol === 'deportista' ? `
+                 <button onclick="apuntarseClase(${clase.id})">🟢 Apuntarse</button>
+                 <button onclick="borrarseClase(${clase.id})">❌ Borrarse</button>
+                 ` : rol === 'gerente' ? `
+                  <button onclick="eliminarClase(${clase.id})">🗑 Eliminar clase</button>
+                 ` : ''
+                 }
+
+              `;
+              divDia.appendChild(tarjeta);
+            });
+          }
+
+          contenedor.appendChild(divDia);
+        });
+      } catch (err) {
+        console.error('Error al cargar clases:', err);
+      }
+    }
+
+    cargarClases();
+
+    function actualizarReloj() {
+      const ahora = new Date();
+      const opciones = {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      };
+      document.getElementById('reloj').innerText = ahora.toLocaleString('es-ES', opciones);
+    }
+
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
+
+    function cerrarSesion() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    async function apuntarseClase(id) {
+      try {
+        const res = await fetch('http://localhost:3000/api/clases/solicitar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token
+          },
+          body: JSON.stringify({ clase_id: id })
+        });
+
+        const data = await res.json();
+        alert(data.mensaje || data.error);
+        cargarClases();
+      } catch (error) {
+        console.error('Error al apuntarse a la clase:', error);
+      }
+    }
+
+    async function borrarseClase(id) {
+      try {
+        const res = await fetch('http://localhost:3000/api/clases/borrar-inscripcion', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token
+          },
+          body: JSON.stringify({ clase_id: id })
+        });
+
+        const data = await res.json();
+        alert(data.mensaje || data.error);
+        cargarClases();
+      } catch (error) {
+        console.error('Error al borrarse de la clase:', error);
+      }
+    }
+    async function eliminarClase(id) {
+  if (confirm("¿Estás seguro de eliminar esta clase?")) {
+    try {
+      const res = await fetch(`http://localhost:3000/api/clases/${id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: 'Bearer ' + token
+        }
+      });
+
+      const data = await res.json();
+      alert(data.mensaje || data.error);
+      cargarClases();
+    } catch (error) {
+      console.error('Error al eliminar la clase:', error);
+    }
+  }
+}
+
+  </script>
+</body>
+</html>

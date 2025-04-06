@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Inicio - Centro Deportivo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-izq">
+      👋 Bienvenid@!!  <strong id="nombreUsuario">Usuario</strong>
+    </div>
+
+    <div class="navbar-centro">
+      <span id="reloj"></span>
+    </div>
+
+    <div class="navbar-der">
+      <div class="navbar-links"></div>
+      <button class="btn-cerrar" onclick="cerrarSesion()">⏻</button>
+    </div>
+  </nav>
+
+  <h1>Bienvenido al Centro Deportivo</h1>
+
+  <!-- Logo centrado -->
+  <div style="text-align:center; margin-top: 30px;">
+    <img src="logo-pagina.png" alt="Logo del centro" class="logo-login">
+  </div>
+
+  <p style="text-align:center;">Consulta tus clases, organiza tus horarios y mantente en forma.</p>
+
+  <!-- Sección resumen -->
+  <section id="resumenUsuario" style="display:none;">
+    <h2>📋 Tu resumen</h2>
+    <div id="infoResumen" class="tarjeta" style="text-align: center;"></div>
+  </section>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const rol = localStorage.getItem('rol');
+    const nombre = localStorage.getItem('nombre');
+    const nombreUsuario = document.getElementById('nombreUsuario');
+    const navbarLinks = document.querySelector('.navbar-links');
+
+    if (!token) window.location.href = 'login.html';
+
+    if (nombre && nombreUsuario) {
+      nombreUsuario.innerText = nombre;
+    }
+
+    // Enlaces navbar por rol
+    if (navbarLinks) {
+      navbarLinks.innerHTML = rol === 'gerente'
+        ? `<a href="admin.html">Panel Admin</a><a href="index.html">Inicio</a><a href="clases.html">Clases</a>`
+        : `<a href="index.html">Inicio</a><a href="clases.html">Clases</a>`;
+    }
+
+    // Reloj
+    function actualizarReloj() {
+      const ahora = new Date();
+      const opciones = {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      };
+      document.getElementById('reloj').innerText = ahora.toLocaleString('es-ES', opciones);
+    }
+
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
+
+    function cerrarSesion() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    // Formato amigable para fecha
+    function formatearFecha(fechaStr) {
+      const fecha = new Date(fechaStr);
+      return fecha.toLocaleDateString('es-ES', {
+        weekday: 'short', day: '2-digit', month: 'short'
+      });
+    }
+
+    // Mostrar resumen para deportistas
+    async function cargarResumen() {
+  if (rol !== 'deportista') return;
+
+  try {
+    const res = await fetch('http://localhost:3000/api/users/resumen', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const data = await res.json();
+    const seccion = document.getElementById('resumenUsuario');
+    const tarjeta = document.getElementById('infoResumen');
+    seccion.style.display = 'block';
+
+    let claseFormateada = '<p>No tienes clases próximamente.</p>';
+    if (data.proxima) {
+      const fecha = new Date(data.proxima.fecha);
+      const fechaFormateada = fecha.toLocaleDateString('es-ES'); // dd/mm/aaaa
+      claseFormateada = `<ul><li><strong>${data.proxima.nombre}</strong> - ${data.proxima.hora} · ${fechaFormateada}</li></ul>`;
+    }
+
+    tarjeta.innerHTML = `
+      <h3>Resumen de clases</h3>
+      <p><strong>Total inscritas:</strong> ${typeof data.total === 'number' ? data.total : 'No disponible'}</p>
+      <h4>Próxima clase:</h4>
+      ${claseFormateada}
+    `;
+  } catch (error) {
+    console.error('Error al obtener resumen:', error);
+  }
+}
+
+cargarResumen();
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Administración</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .formulario-flex {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .formulario-flex form {
+      flex: 1;
+      min-width: 300px;
+      max-width: 500px;
+    }
+
+    .tabla-usuarios {
+    max-height: 200px; 
+    overflow-y: auto;  
+    display: block;
+  }
+
+    .tabla-usuarios table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .tabla-usuarios th,
+    .tabla-usuarios td {
+      padding: 12px 15px;
+      text-align: left;
+    }
+
+    .tabla-usuarios thead {
+      background-color: #f0f0f0;
+    }
+
+    .tabla-usuarios input {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .tabla-usuarios button {
+      margin-top: 5px;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <div class="navbar-izq">👋 Bienvenido!! <strong id="nombreUsuario">Gerente</strong></div>
+    <div class="navbar-centro"><span id="reloj"></span></div>
+    <div class="navbar-der">
+      <div class="navbar-links">
+        <a href="admin.html">Panel Admin</a>
+        <a href="index.html">Inicio</a>
+        <a href="clases.html">Clases</a>
+      </div>
+      <button class="btn-cerrar" onclick="cerrarSesion()">⏻</button>
+    </div>
+  </nav>
+
+  <h1>Panel del Gerente</h1>
+
+  <!-- TABLA DE USUARIOS -->
+  <section style="text-align:center; margin: 20px auto;">
+    <input type="text" id="filtroUsuarios" placeholder="Buscar por nombre o correo..." style="max-width: 400px; padding: 10px; border-radius: 8px; border: 1px solid #ccc;">
+  </section>  
+  <section>
+    <h2>Usuarios Registrados</h2>
+    <div class="tabla-usuarios">
+      <table>
+        <thead>
+          <tr>
+           <!--<th>ID</th> --> 
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaUsuarios">
+          <!-- JavaScript inserta contenido aquí -->
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- FORMULARIOS EN PARALELO -->
+  <div class="formulario-flex">
+    <!-- Registrar usuario -->
+    <form id="formRegistro">
+      <h2>Registrar nuevo usuario</h2>
+      <input type="text" id="nombre" placeholder="Nombre" required>
+      <input type="email" id="correo" placeholder="Correo" required>
+      <input type="password" id="contraseña" placeholder="Contraseña" required>
+      <select id="rol">
+        <option value="deportista">Deportista</option>
+        <option value="gerente">Gerente</option>
+      </select>
+      <button type="submit">Registrar</button>
+    </form>
+
+    <!-- Crear clase -->
+    <form id="formClase">
+      <h2>Crear nueva clase</h2>
+      <input type="text" id="nombreClase" placeholder="Nombre de la clase" required>
+      <input type="date" id="fecha" required>
+      <input type="time" id="hora" required>
+      <input type="number" id="plazas" placeholder="Plazas totales" required>
+      <button type="submit">Crear clase</button>
+    </form>
+  </div>
+
+  <!-- CONTADOR -->
+  <section style="text-align: center;">
+    <h2>Total de usuarios registrados</h2>
+    <p id="contador">Cargando...</p>
+  </section>
+  
+
+  <script>
+    const token = localStorage.getItem('token');
+    const rol = localStorage.getItem('rol');
+    const nombre = localStorage.getItem('nombre');
+
+    if (!token || rol !== 'gerente') window.location.href = 'login.html';
+    document.getElementById('nombreUsuario').innerText = nombre;
+
+    function actualizarReloj() {
+      const ahora = new Date();
+      const opciones = {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      };
+      document.getElementById('reloj').innerText = ahora.toLocaleString('es-ES', opciones);
+    }
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
+
+    function cerrarSesion() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    // REGISTRO DE USUARIOS
+    document.getElementById('formRegistro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('nombre').value;
+      const correo = document.getElementById('correo').value;
+      const contraseña = document.getElementById('contraseña').value;
+      const rolNuevo = document.getElementById('rol').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/users/registrar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token
+          },
+          body: JSON.stringify({ nombre, correo, contraseña, rol: rolNuevo })
+        });
+        const data = await res.json();
+        alert(data.mensaje || data.error);
+        cargarUsuarios();
+      } catch (error) {
+        console.error('Error al registrar usuario:', error);
+      }
+    });
+
+    // CREAR CLASE
+    document.getElementById('formClase').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('nombreClase').value;
+      const fecha = document.getElementById('fecha').value;
+      const hora = document.getElementById('hora').value;
+      const plazas_totales = document.getElementById('plazas').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/clases/crear', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token
+          },
+          body: JSON.stringify({ nombre, fecha, hora, plazas_totales })
+        });
+        const data = await res.json();
+        alert(data.mensaje || data.error);
+      } catch (error) {
+        console.error('Error al crear clase:', error);
+      }
+    });
+
+    // CONTADOR
+    async function cargarContador() {
+      const res = await fetch('http://localhost:3000/api/users/contador', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const data = await res.json();
+      document.getElementById('contador').innerText = `Usuarios registrados: ${data.total}`;
+    }
+
+    // CARGAR USUARIOS
+    async function cargarUsuarios() {
+      const res = await fetch('http://localhost:3000/api/users/todos', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const usuarios = await res.json();
+      const tabla = document.getElementById('tablaUsuarios');
+      tabla.innerHTML = '';
+      usuarios.forEach(u => {
+        tabla.innerHTML += `
+          <tr>
+            <td>${u.nombre}</td>
+            <td><input type="text" value="${u.correo}" onchange="actualizarCorreo(${u.id}, this.value)" /></td>
+            <td>${u.rol}</td>
+            <td>
+              <button onclick="eliminarUsuario(${u.id})">🗑</button>
+              <button onclick="actualizarContraseña(${u.id})">🔒 Cambiar Contraseña</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    
+  document.getElementById('filtroUsuarios').addEventListener('input', function () {
+    const filtro = this.value.toLowerCase().trim();
+    const filas = document.querySelectorAll('#tablaUsuarios tr');
+
+    filas.forEach(fila => {
+      const celdas = fila.querySelectorAll('td');
+      let coincide = false;
+
+      celdas.forEach(celda => {
+        const input = celda.querySelector('input');
+        const texto = input ? input.value.toLowerCase() : celda.textContent.toLowerCase();
+        if (texto.includes(filtro)) {
+          coincide = true;
+        }
+      });
+
+      fila.style.display = coincide ? '' : 'none';
+    });
+  });
+
+
+    async function eliminarUsuario(id) {
+      if (confirm('¿Estás seguro de eliminar este usuario?')) {
+        await fetch(`http://localhost:3000/api/users/${id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        cargarUsuarios();
+      }
+    }
+
+    async function actualizarCorreo(id, nuevoCorreo) {
+      await fetch(`http://localhost:3000/api/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ correo: nuevoCorreo })
+      });
+    }
+
+    async function actualizarContraseña(id) {
+      const nueva = prompt('Introduce la nueva contraseña:');
+      if (!nueva) return;
+      await fetch(`http://localhost:3000/api/users/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify({ contraseña: nueva })
+      });
+    }
+
+    cargarContador();
+    cargarUsuarios();
+  </script>
+</body>
+</html>

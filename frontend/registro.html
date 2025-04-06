@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro - Centro Deportivo</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .registro-container {
+      max-width: 400px;
+      margin: 40px auto;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .registro-container img.logo-login {
+      width: 80px;
+      margin-bottom: 15px;
+    }
+
+    .frase-motivadora {
+      font-style: italic;
+      font-size: 0.95rem;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    .registro-container p {
+      margin-top: 20px;
+    }
+
+    .registro-container a {
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    .registro-container a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: #999;
+    }
+
+    /* Estilo de la tarjeta */
+    .registro-container form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <h1 style="text-align:center;">Crear cuenta</h1>
+
+  <div class="registro-container">
+    <img src="logo-pagina.png" alt="Logo del centro" class="logo-login">
+    <div class="frase-motivadora">Entrena tu cuerpo, entrena tu mente</div>
+
+    <form id="formRegistro">
+      <input type="text" id="nombre" placeholder="Nombre completo" required>
+      <input type="email" id="correo" placeholder="Correo electrónico" required>
+      <input type="password" id="contraseña" placeholder="Contraseña" required>
+      <input type="hidden" id="rol" value="deportista">
+      <button type="submit">Registrarme</button>
+    </form>
+
+    <p>¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+  </div>
+
+  <footer>© 2025 Centro Deportivo. Todos los derechos reservados.</footer>
+
+  <script>
+    document.getElementById('formRegistro').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('nombre').value;
+      const correo = document.getElementById('correo').value;
+      const contraseña = document.getElementById('contraseña').value;
+      const rol = document.getElementById('rol').value;
+
+      try {
+        const res = await fetch('http://localhost:3000/api/users/registrar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre, correo, contraseña, rol })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Registro exitoso. Ahora puedes iniciar sesión.');
+          window.location.href = 'login.html';
+        } else {
+          alert(data.error || 'Error al registrar.');
+        }
+      } catch (error) {
+        console.error('Error al registrar:', error);
+        alert('Ocurrió un error al registrar.');
+      }
+    });
+  </script>
+</body>
+</html>
